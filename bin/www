@@ -1,0 +1,30 @@
+#!/usr/bin/env node
+
+const app = require('../app');
+const http = require('http');
+
+const port = 2026;
+app.set('port', port);
+
+const server = http.createServer(app);
+
+server.listen(port, () => {
+    console.log(`✅ 服务器启动成功：http://localhost:${port}`);
+});
+
+server.on('error', (error) => {
+    if (error.syscall !== 'listen') throw error;
+    
+    switch (error.code) {
+        case 'EACCES':
+            console.error(`端口 ${port} 需要管理员权限`);
+            process.exit(1);
+            break;
+        case 'EADDRINUSE':
+            console.error(`端口 ${port} 已被占用`);
+            process.exit(1);
+            break;
+        default:
+            throw error;
+    }
+});

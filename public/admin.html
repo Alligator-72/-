@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>校园快递管理系统 - 管理员后台</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Microsoft YaHei', sans-serif; background: #f5f6fa; }
+        .header {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white; padding: 15px 30px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .header h1 { font-size: 22px; }
+        .header .user-info { display: flex; align-items: center; gap: 20px; }
+        .btn-logout {
+            background: rgba(255,255,255,0.2); color: white;
+            border: 1px solid rgba(255,255,255,0.5); padding: 8px 20px;
+            border-radius: 5px; cursor: pointer; font-size: 14px;
+        }
+        .btn-logout:hover { background: rgba(255,255,255,0.3); }
+        .tabs { display: flex; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .tab {
+            flex: 1; text-align: center; padding: 15px; cursor: pointer;
+            font-size: 16px; font-weight: bold; color: #666;
+            transition: all 0.3s; border-bottom: 3px solid transparent;
+        }
+        .tab.active { color: #e74c3c; border-bottom-color: #e74c3c; }
+        .tab:hover { background: #fff5f5; }
+        .container { max-width: 1300px; margin: 30px auto; padding: 0 20px; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .search-bar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+        .search-bar input, .search-bar select { padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+        .btn { padding: 10px 25px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; color: white; }
+        .btn-search { background: #e74c3c; }
+        .btn-add { background: #27ae60; }
+        .btn-edit { background: #f39c12; padding: 6px 15px; font-size: 12px; }
+        .btn-delete { background: #e74c3c; padding: 6px 15px; font-size: 12px; }
+        .btn-save { background: #27ae60; }
+        .btn-cancel { background: #95a5a6; }
+        .btn:hover { opacity: 0.85; }
+        table { width: 100%; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-collapse: collapse; }
+        th { background: #e74c3c; color: white; padding: 14px; text-align: left; font-size: 14px; }
+        td { padding: 12px 14px; border-bottom: 1px solid #eee; font-size: 13px; }
+        tr:hover { background: #fff5f5; }
+        .status { padding: 4px 12px; border-radius: 15px; font-size: 12px; font-weight: bold; }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-picked { background: #d4edda; color: #155724; }
+        .status-signed { background: #cce5ff; color: #004085; }
+        .status-error { background: #f8d7da; color: #721c24; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal.show { display: flex; }
+        .modal-content { background: white; padding: 30px; border-radius: 15px; width: 500px; max-height: 80vh; overflow-y: auto; }
+        .modal-content h3 { margin-bottom: 20px; color: #333; }
+        .modal-content .form-group { margin-bottom: 15px; }
+        .modal-content label { display: block; margin-bottom: 6px; color: #555; font-size: 14px; }
+        .modal-content input, .modal-content select, .modal-content textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; font-family: inherit; }
+        .modal-content textarea { height: 80px; resize: vertical; }
+        .modal-buttons { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+        .pagination { margin-top: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .pagination button { padding: 8px 16px; background: #e74c3c; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .pagination select { padding: 8px; border: 1px solid #ddd; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔧 管理员后台</h1>
+        <div class="user-info">
+            <span id="usernameDisplay"></span>
+            <button class="btn-logout" onclick="logout()">退出登录</button>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab(0)">📦 快递管理</div>
+        <div class="tab" onclick="switchTab(1)">💬 反馈管理</div>
+    </div>
+
+    <div class="container">
+        <div class="tab-content active" id="tab0">
+            <div class="search-bar">
+                <input type="text" id="searchTracking" placeholder="快递单号">
+                <input type="text" id="searchCompany" placeholder="快递公司">
+                <select id="searchStatus">
+                    <option value="">全部状态</option>
+                    <option value="待取件">待取件</option>
+                    <option value="已取件">已取件</option>
+                    <option value="已签收">已签收</option>
+                    <option value="异常">异常</option>
+                </select>
+                <button class="btn btn-search" onclick="resetAndSearch()">🔍 搜索</button>
+                <button class="btn btn-add" onclick="showAddModal()">➕ 添加快递</button>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>快递单号</th>
+                        <th>收件人</th>
+                        <th>手机号</th>
+                        <th>快递公司</th>
+                        <th>状态</th>
+                        <th>取件地点</th>
+                        <th>取件码</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="packageTableBody"></tbody>
+            </table>
+            <!-- 分页控件 -->
+            <div class="pagination">
+                <div>共 <span id="totalRecords">0</span> 条记录</div>
+                <div style="display: flex; gap: 15px; align-items: center;">
+                    <button onclick="changePage(currentPage - 1)" id="prevBtn">上一页</button>
+                    <span>第 <span id="currentPage">1</span> / <span id="totalPages">1</span> 页</span>
+                    <button onclick="changePage(currentPage + 1)" id="nextBtn">下一页</button>
+                    <select id="pageSizeSelect" onchange="changePageSize()">
+                        <option value="10">10条/页</option>
+                        <option value="20">20条/页</option>
+                        <option value="50">50条/页</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="tab1">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>用户</th>
+                        <th>标题</th>
+                        <th>内容</th>
+                        <th>图片</th>
+                        <th>状态</th>
+                        <th>时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="feedbackTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 弹窗 -->
+    <div class="modal" id="packageModal">
+        <div class="modal-content">
+            <h3 id="modalTitle">添加快递</h3>
+            <input type="hidden" id="editId">
+            <div class="form-group">
+                <label>快递单号 *</label>
+                <input type="text" id="editTracking" placeholder="如：SF1234567890">
+            </div>
+            <div class="form-group">
+                <label>收件人 *（选择用户，自动填写姓名和手机号）</label>
+                <select id="editOwnerSelect" onchange="onUserSelect()">
+                    <option value="">请选择用户</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>收件人姓名</label>
+                <input type="text" id="editRecipient" placeholder="自动填写" readonly>
+            </div>
+            <div class="form-group">
+                <label>收件人手机号</label>
+                <input type="text" id="editPhone" placeholder="自动填写" readonly>
+            </div>
+            <div class="form-group">
+                <label>快递公司 *</label>
+                <input type="text" id="editCompany" placeholder="如：顺丰快递">
+            </div>
+            <div class="form-group">
+                <label>状态</label>
+                <select id="editStatus">
+                    <option value="待取件">待取件</option>
+                    <option value="已取件">已取件</option>
+                    <option value="已签收">已签收</option>
+                    <option value="异常">异常</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>取件地点</label>
+                <input type="text" id="editLocation" placeholder="如：学校快递驿站A区">
+            </div>
+            <div class="form-group">
+                <label>取件码</label>
+                <input type="text" id="editCode" placeholder="如：8888">
+            </div>
+            <div class="form-group">
+                <label>备注</label>
+                <textarea id="editDesc" placeholder="备注信息"></textarea>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-cancel" onclick="closeModal()">取消</button>
+                <button class="btn btn-save" onclick="savePackage()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user'));
+
+        if (!token || !user || user.role !== 'admin') {
+            window.location.href = 'login.html';
+        }
+
+        document.getElementById('usernameDisplay').textContent = `🔧 ${user.username} (管理员)`;
+
+        let userList = [];
+        let currentPage = 1;
+        let currentPageSize = 10;
+        let totalPages = 1;
+
+        function switchTab(index) {
+            document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === index));
+            document.querySelectorAll('.tab-content').forEach((c, i) => c.classList.toggle('active', i === index));
+            if (index === 1) loadAllFeedbacks();
+        }
+
+        async function loadUserOptions() {
+            try {
+                const response = await fetch('/api/users/list', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                userList = await response.json();
+                const select = document.getElementById('editOwnerSelect');
+                select.innerHTML = '<option value="">请选择用户</option>';
+                userList.forEach(u => {
+                    select.innerHTML += `<option value="${u.id}" data-name="${u.username}" data-phone="${u.phone || ''}">${u.username}</option>`;
+                });
+            } catch (error) {
+                console.error('加载用户列表失败:', error);
+            }
+        }
+
+        function onUserSelect() {
+            const select = document.getElementById('editOwnerSelect');
+            const selectedOption = select.options[select.selectedIndex];
+            if (selectedOption.value) {
+                document.getElementById('editRecipient').value = selectedOption.dataset.name;
+                document.getElementById('editPhone').value = selectedOption.dataset.phone;
+            } else {
+                document.getElementById('editRecipient').value = '';
+                document.getElementById('editPhone').value = '';
+            }
+        }
+
+        async function loadPackages() {
+            const tracking = document.getElementById('searchTracking').value;
+            const company = document.getElementById('searchCompany').value;
+            const status = document.getElementById('searchStatus').value;
+            let url = `/api/packages?page=${currentPage}&pageSize=${currentPageSize}`;
+            if (tracking) url += `&tracking_number=${tracking}`;
+            if (company) url += `&courier_company=${company}`;
+            if (status) url += `&status=${status}`;
+
+            try {
+                const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+                const result = await response.json();
+                const packages = result.data || result;
+                const pagination = result.pagination;
+                
+                if (pagination) {
+                    totalPages = pagination.totalPages;
+                    document.getElementById('currentPage').textContent = currentPage;
+                    document.getElementById('totalPages').textContent = totalPages;
+                    document.getElementById('totalRecords').textContent = pagination.total;
+                    document.getElementById('prevBtn').disabled = currentPage <= 1;
+                    document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+                }
+                
+                const tbody = document.getElementById('packageTableBody');
+                if (!packages || packages.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;">暂无快递</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = packages.map(p => `
+                    <tr>
+                        <td>${p.id}</td>
+                        <td>${p.tracking_number}</td>
+                        <td>${p.recipient_name}</td>
+                        <td>${p.recipient_phone}</td>
+                        <td>${p.courier_company}</td>
+                        <td><span class="status ${getStatusClass(p.status)}">${p.status}</span></td>
+                        <td>${p.pickup_location || '-'}</td>
+                        <td><strong>${p.pickup_code || '-'}</strong></td>
+                        <td>
+                            <button class="btn btn-edit" onclick="showEditModal(${p.id})">✏️</button>
+                            <button class="btn btn-delete" onclick="deletePackage(${p.id})">🗑️</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('加载失败:', error);
+            }
+        }
+
+        function getStatusClass(status) {
+            const map = {
+                '待取件': 'status-pending',
+                '已取件': 'status-picked',
+                '已签收': 'status-signed',
+                '异常': 'status-error'
+            };
+            return map[status] || '';
+        }
+
+        function changePage(newPage) {
+            if (newPage < 1 || newPage > totalPages) return;
+            currentPage = newPage;
+            loadPackages();
+        }
+
+        function changePageSize() {
+            currentPageSize = parseInt(document.getElementById('pageSizeSelect').value);
+            currentPage = 1;
+            loadPackages();
+        }
+
+        function resetAndSearch() {
+            currentPage = 1;
+            loadPackages();
+        }
+
+        async function showAddModal() {
+            await loadUserOptions();
+            document.getElementById('modalTitle').textContent = '添加快递';
+            document.getElementById('editId').value = '';
+            document.getElementById('editOwnerSelect').value = '';
+            document.getElementById('editRecipient').value = '';
+            document.getElementById('editPhone').value = '';
+            document.getElementById('editTracking').value = '';
+            document.getElementById('editCompany').value = '';
+            document.getElementById('editStatus').value = '待取件';
+            document.getElementById('editLocation').value = '';
+            document.getElementById('editCode').value = '';
+            document.getElementById('editDesc').value = '';
+            document.getElementById('packageModal').classList.add('show');
+        }
+
+        async function showEditModal(id) {
+            await loadUserOptions();
+            try {
+                const response = await fetch(`/api/packages/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const p = await response.json();
+                document.getElementById('modalTitle').textContent = '编辑快递';
+                document.getElementById('editId').value = p.id;
+                document.getElementById('editTracking').value = p.tracking_number;
+                document.getElementById('editCompany').value = p.courier_company;
+                document.getElementById('editStatus').value = p.status;
+                document.getElementById('editLocation').value = p.pickup_location || '';
+                document.getElementById('editCode').value = p.pickup_code || '';
+                document.getElementById('editDesc').value = p.description || '';
+                
+                if (p.owner_id) {
+                    document.getElementById('editOwnerSelect').value = p.owner_id;
+                    onUserSelect();
+                } else {
+                    document.getElementById('editOwnerSelect').value = '';
+                    document.getElementById('editRecipient').value = p.recipient_name;
+                    document.getElementById('editPhone').value = p.recipient_phone;
+                }
+                
+                document.getElementById('packageModal').classList.add('show');
+            } catch (error) {
+                alert('加载快递信息失败');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('packageModal').classList.remove('show');
+        }
+
+        async function savePackage() {
+            const id = document.getElementById('editId').value;
+            const selectedUserId = document.getElementById('editOwnerSelect').value;
+            
+            const data = {
+                tracking_number: document.getElementById('editTracking').value.trim(),
+                recipient_name: document.getElementById('editRecipient').value.trim(),
+                recipient_phone: document.getElementById('editPhone').value.trim(),
+                courier_company: document.getElementById('editCompany').value.trim(),
+                status: document.getElementById('editStatus').value,
+                pickup_location: document.getElementById('editLocation').value.trim(),
+                pickup_code: document.getElementById('editCode').value.trim(),
+                description: document.getElementById('editDesc').value.trim(),
+                owner_id: selectedUserId || null
+            };
+
+            if (!data.tracking_number || !data.recipient_name || !data.recipient_phone || !data.courier_company) {
+                alert('请填写必填项（快递单号、收件人、手机号、快递公司）');
+                return;
+            }
+
+            try {
+                const url = id ? `/api/packages/${id}` : '/api/packages';
+                const method = id ? 'PUT' : 'POST';
+                const response = await fetch(url, {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    alert(id ? '修改成功' : '添加成功');
+                    closeModal();
+                    loadPackages();
+                } else {
+                    alert(result.message);
+                }
+            } catch (error) {
+                alert('操作失败');
+            }
+        }
+
+        async function deletePackage(id) {
+            if (!confirm('确定要删除吗？')) return;
+            try {
+                const response = await fetch(`/api/packages/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    alert('删除成功');
+                    loadPackages();
+                }
+            } catch (error) {
+                alert('删除失败');
+            }
+        }
+
+        async function loadAllFeedbacks() {
+            try {
+                const response = await fetch('/api/feedbacks/all', { headers: { 'Authorization': `Bearer ${token}` } });
+                const feedbacks = await response.json();
+                const tbody = document.getElementById('feedbackTableBody');
+                if (feedbacks.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;">暂无反馈</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = feedbacks.map(f => `
+                    <tr>
+                        <td>${f.id}</td>
+                        <td>${f.username || '-'}</td>
+                        <td>${f.title}</td>
+                        <td>${f.content.substring(0, 40)}...</td>
+                        <td>${f.image_path ? `<a href="${f.image_path}" target="_blank">查看</a>` : '-'}</td>
+                        <td>${f.status}</td>
+                        <td>${new Date(f.created_at).toLocaleString()}</td>
+                        <td>
+                            <select onchange="updateFeedbackStatus(${f.id}, this.value)">
+                                <option value="待处理" ${f.status=='待处理'?'selected':''}>待处理</option>
+                                <option value="处理中" ${f.status=='处理中'?'selected':''}>处理中</option>
+                                <option value="已解决" ${f.status=='已解决'?'selected':''}>已解决</option>
+                            </select>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('加载反馈失败:', error);
+            }
+        }
+
+        async function updateFeedbackStatus(id, status) {
+            try {
+                await fetch(`/api/feedbacks/${id}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ status })
+                });
+            } catch (error) {
+                console.error('更新失败:', error);
+            }
+        }
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = 'login.html';
+        }
+
+        loadPackages();
+    </script>
+</body>
+</html>
